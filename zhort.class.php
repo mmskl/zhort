@@ -109,27 +109,27 @@ class Zhort {
      * @param $val
      * @return mixed
      */
-    public function getUrlFromDB($val) {
+    public function getUrlFromDB($value) {
 
 
-//        $r = "SELECT ". $this->_dbTableNames . ".name as tname, " . $this->_dbTableNames . ".url_id as turl_id, " . $this->_dbTable . ".url as turl, " .$this->_dbTable . ".id as tid FROM " . $this->_dbTableNames . "," . $this->_dbTable . " WHERE tname=" . $val . " AND tid=";
-        $r = "SELECT url_id FROM " . $this->_dbTableNames . " WHERE name='" . $val ."'";
-        $result6 = $this->_db->query($r);
-        $resArr = $result6->fetch();
-        if($result6->rowCount() > 0) {
+        $st = "SELECT url FROM " . $this->_dbTableNames . " n
+                LEFT JOIN " . $this->_dbTable . " u on (n.url_id=u.id and name=:name)
+            ";
 
-            $t = "SELECT url FROM " . $this->_dbTable . " WHERE id='" . $resArr[0] . "'";
-            $result4 = $this->_db->query($t);
-            $resArr = $result4->fetch();
-            return $resArr[0];
+        $ex = $this->_db->prepare($st);
+        $ex->bindValue(':name', $value);
+        $ex->execute();
+
+        if($ex->rowCount() == 0) {
+
+            $st = "SELECT url FROM " . $this->_dbTable . " WHERE id=:id";
+            $ex = $this->_db->prepare($st);
+            $ex->bindValue(':id', $value);
+            $ex->execute();
 
         }
-        else {
-            $y = "SELECT url FROM " . $this->_dbTable . " WHERE id='" . $val . "'";
-            $result4 = $this->_db->query($y);
-            $resArr = $result4->fetch();
-            return $resArr[0];
-        }
+
+        return $ex->fetch(PDO::FETCH_COLUMN);
 
 
     }
@@ -156,15 +156,15 @@ class Zhort {
      */
     private function _checkNameAvailability($name) {
 
-        $t = "SELECT id FROM " . $this->_dbTableNames . " WHERE name='" . $name ."'";
-        $result3 = $this->_db->query($t);
+        $st = "SELECT id FROM " . $this->_dbTableNames . " WHERE name=:name";
+        $ex = $this->_db->prepare($st);
+        $ex->bindValue(':name', $name);
+        $ex->execute();
 
 
-        if($result3->rowCount()==0) {
-            return true; }
-        else {
-            return false;
-        }
+
+        return $ex->rowCount()==0;
+
 
     }
 
@@ -205,13 +205,14 @@ class Zhort {
      */
     private function _findDoubles() {
 
-        $q = "SELECT id FROM " . $this->_dbTable . " WHERE url='" . $this->_url . "'";
-        $str = $this->_db->query($q);
-        if($str->rowCount()>0) {
-            $resArr = $str->fetch();
-            return $resArr[0];
+        $st = "SELECT id FROM " . $this->_dbTable . " WHERE url=:url";
+        $ex = $this->_db->prepare($st);
+        $ex->bindValue(':url', $this->_url);
+        $ex->execute();
+        $result = $ex->fetch(PDO::FETCH_COLUMN);
+        if(!empty($result)) {
+            return $result;
         }
-
         else {
             return false;
         }
@@ -220,7 +221,7 @@ class Zhort {
 
 
 
-    
+
     /**
      * @return bool
      * @throws Exception
@@ -232,7 +233,7 @@ class Zhort {
         if(!preg_match($pattern, $this->_url)) {
             throw new Exception('invalid url');
         }
-        else return true;
+        return true;
 
     }
 
